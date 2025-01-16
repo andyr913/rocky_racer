@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+<head>
+    <title>Assignment 4</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Basic Bootstrap Link -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <!-- Bootstrap Icons -->    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!--link rel="stylesheet" href="styles.css"-->
+
+    <!-- Bootstrap Javascript (Needed for nav menus)-->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+    crossorigin="anonymous"></script>
+
+    <style>
+        body {
+            background-image: linear-gradient(to bottom right, rgb(89, 0, 255), rgb(255, 0, 255), rgb(223, 108, 203));
+        }
+        .container-fluid {
+            padding: 0;
+        }
+
+        header, footer {
+            background-color: indigo;
+        }
+        #instructions {
+            stroke:white;
+            fill: white;
+            stroke-width: 1;
+            font-size: 16pt;
+            font-family: "Lucida Console", "Courier New", monospace;
+            text-anchor: middle;
+            alignment-baseline: middle;
+        }
+
+        #startmessage {
+            stroke:white;
+            fill: white;
+            stroke-width: 1;
+            font-size: 24pt;
+            font-family: "Lucida Console", "Courier New", monospace;
+            text-anchor: middle;
+            alignment-baseline: middle;
+            animation-name: pulse;
+            animation-duration: 0.35s;
+            animation-iteration-count: infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                font-size: 24pt;
+            }
+            50% {
+                font-size: 25pt;
+            }
+            100% {
+                font-size: 24pt;
+            }
+        }
+
+        .asteroid {
+            fill: grey;
+            stroke: darkgrey;
+            stroke-width: 2;
+            width: 100%;
+            height: 100%;
+        }
+
+        .star {
+            fill: white;
+            width: 100%;
+            height: 100%;
+        }
+
+        .explosion {
+            fill: yellow;
+            stroke: orange;
+            stroke-width: 10;
+            width: 100%;
+            height: 100%;
+            animation-name: explode;
+            animation-duration: 1s;
+            animation-iteration-count: 1;
+            animation-delay: 1340ms;
+        }
+
+        @keyframes explode {
+            0% {
+                transform: scale(1);
+                opacity: 0.5;
+            }
+            50% {
+                opacity: 1;
+            }
+                
+            100% {
+                transform: scale(1.4);
+                opacity: 0;
+            }
+        }
+
+        
+    </style>
+</head>
+<body>
+    <div class = "container-fluid text-center">
+        <header class = "mb-5 pb-3 pt-3 border-bottom border-3 border-light">
+            <h1 class = "text-light">Cosmic Storm!</h1>
+        </header>
+        <main>
+            <div>
+                <svg width = "700" height = "750" class = "border border-light border-3 rounded" viewbox = "0 0 700 750" xmlns="http://www.w3.org/2000/svg" onclick = "startGame()">
+                    <rect id = "canvas" x = "0" y = "0" width = "700" height = "750" fill = "black"/>
+                    <polygon id = "spaceship1" fill = "white" points = "350,650 330,670 330,710 350,690 370,710 370,670" x = "350" y = "650"/>
+                    <polygon id = "spaceship2" fill = "black" points = "350,660 340,670 360,670"/>
+                    <!-- <circle id = "star" fill = "white" cx = " 350" cy = "550" r = "1"/> -->
+                    
+                    <text class = "text-center" id = "messages">
+                        <tspan x = "350" y = "180" id = "instructions">Dodge the asteroids and become the </tspan>
+                        <tspan x = "350" y = "210" id = "instructions">best pilot in the solar system.</tspan>
+                        <tspan x = "350" y = "280" id = "instructions">Use the left and right arrows to move your ship!</tspan>
+                        <tspan x = "350" y ="385" id = "startmessage">click to start</tspan>
+                    </text>
+                </svg>
+            </div>
+            
+        </main>
+        <footer class = "mt-5 pt-3 pb-3 border-top border-3 border-light">
+            <div>
+                <p class = "text-light"><strong>&copy;2024 Andres Rosas Ortiz, 000800390</strong></p>
+            </div>
+            
+        </footer>
+    </div>
+</body>
+<script>
+    const spaceship1 = document.getElementById("spaceship1");
+    const spaceship2 = document.getElementById("spaceship2");
+
+    const canvasWidth = 700;
+    const canvasHeight = 750;
+
+    const svgNS = "http://www.w3.org/2000/svg";
+    const svg = document.querySelector("svg");
+
+    let asteroidID = 0;
+
+    // Declaring timer objects to call functions repeatedly
+    let asteroidCreationTimer = null;
+    let asteroidMovementTimer = null;
+    let shipMovementTimer = null;
+    let starCreationTimer = null;
+
+    // Default y value for asteroids, so they are created outside of the canvas view
+    let asteroidY = -30;
+
+    let asteroidArray = [];
+    // let rocketArray = [];
+
+    let messagesRemoved = false;
+
+    // Removes start message when canvas is clicked
+    function startGame() {
+        if (!messagesRemoved) {
+            let messages = document.getElementById("messages");
+            messages.style.display = "none";
+            // Calling function to start creating asteroids at a set rate
+            creationInterval();
+           
+            window.addEventListener("keydown", moveShip);
+            messagesRemoved = true;
+        }
+    }
+
+    function moveShip() {
+        let x = parseFloat(spaceship1.getAttribute("x"));
+        if (event.key === "ArrowLeft" && x >= 40) {
+            // Updating x coordinate and adjusting points based on x
+            x -= 20;
+            spaceship1.setAttribute("x", x);
+            spaceship1.setAttribute("points", `${x},650 ${x - 20},670 ${x - 20},710 ${x},690 ${x + 20},710 ${x + 20},670`);
+            spaceship2.setAttribute("points", `${x},660 ${x - 10},670 ${x + 10},670`);
+        }
+        else if (event.key === "ArrowRight" && x <= 660) {
+            // Updating x coordinate and adjusting points based on x
+            x += 20;
+            spaceship1.setAttribute("x", x);
+            spaceship1.setAttribute("points", `${x},650 ${x - 20},670 ${x - 20},710 ${x},690 ${x + 20},710 ${x + 20},670`);
+            spaceship2.setAttribute("points", `${x},660 ${x - 10},670 ${x + 10},670`);
+        }
+    }
+
+    function createAsteroid() {
+
+        // Random d values for asteroids (from https://www.softr.io/tools/svg-shape-generator)
+        let dValueArray = ['M21.1,-24.3C29.2,-18.4,38.8,-13.5,42.7,-5.4C46.6,2.6,44.9,13.8,39.6,22.8C34.3,31.8,25.4,38.7,15.5,41.9C5.6,45.2,-5.3,44.9,-12.8,40C-20.3,35.2,-24.4,25.8,-29,17.1C-33.5,8.4,-38.6,0.3,-37.4,-6.6C-36.1,-13.5,-28.5,-19.2,-21.3,-25.2C-14,-31.2,-7,-37.3,-0.2,-37.1C6.5,-36.8,13.1,-30.1,21.1,-24.3Z', 'M16.9,-21.1C23.7,-14.5,32.2,-10.8,33.1,-5.8C34,-0.9,27.2,5.5,22.2,11.6C17.2,17.8,14,23.7,8.9,26.5C3.7,29.3,-3.3,29,-11.8,27.8C-20.2,26.7,-30,24.8,-29.8,19.8C-29.7,14.7,-19.7,6.5,-18.4,-3.6C-17,-13.8,-24.4,-25.8,-22.8,-33.3C-21.2,-40.9,-10.6,-43.9,-2.8,-40.6C5.1,-37.3,10.1,-27.7,16.9,-21.1Z', 'M23.5,-28.2C27.6,-24.5,26.2,-14.4,28.3,-4.7C30.4,5,35.9,14.5,33,18.8C30.2,23.1,19,22.2,9.5,25.4C0,28.6,-7.8,35.8,-15.5,35.9C-23.1,36,-30.6,29,-31.8,21.2C-33,13.3,-27.9,4.7,-26.5,-4.9C-25.1,-14.4,-27.3,-24.8,-23.5,-28.6C-19.7,-32.4,-9.9,-29.5,-0.1,-29.4C9.7,-29.3,19.3,-31.9,23.5,-28.2Z', 'M26.3,-19.6C28.6,-18,21.4,-7.4,15.7,-2C10,3.3,5.9,3.5,1,8.1C-3.8,12.7,-9.4,21.9,-11,21.6C-12.6,21.3,-10.2,11.5,-10.7,4C-11.3,-3.6,-14.7,-9,-13.3,-10.4C-12,-11.8,-6,-9.2,3,-11.6C12,-13.9,23.9,-21.3,26.3,-19.6Z', 'M12.1,-20.2C18.3,-14.8,27.8,-15.9,28.8,-13.3C29.8,-10.7,22.3,-4.3,21.8,3.5C21.3,11.3,27.8,20.5,26,22.5C24.2,24.4,14.1,19,6.8,19.4C-0.5,19.7,-5,25.9,-11.9,29.1C-18.7,32.2,-28.1,32.3,-29,27.3C-29.9,22.3,-22.5,12.2,-16.3,6.8C-10.1,1.4,-5.1,0.7,-6.9,-6.4C-8.7,-13.5,-17.3,-26.9,-17.3,-35.1C-17.2,-43.3,-8.6,-46.3,-2.8,-41.9C2.9,-37.4,5.9,-25.6,12.1,-20.2Z', 'M12.6,-18C16.6,-19.5,20.4,-16.7,22.9,-13C25.4,-9.3,26.6,-4.6,28.5,1.1C30.4,6.8,32.9,13.6,30.6,17.7C28.3,21.8,21.3,23.3,15.4,23.6C9.5,23.9,4.8,23,1.9,19.7C-1,16.5,-1.9,10.7,-9,11.1C-16.2,11.5,-29.4,18.1,-35.5,17.3C-41.5,16.4,-40.2,8.2,-35.1,3C-29.9,-2.3,-20.8,-4.5,-18.3,-11.4C-15.8,-18.4,-19.9,-29.9,-17.9,-29.6C-16,-29.3,-8,-17.2,-1.8,-14C4.3,-10.8,8.6,-16.6,12.6,-18Z'];
+
+        // Random array index from 0 to 5
+        let randIndex = Math.floor(Math.random() * 6);
+
+        // Random x position from 50 to 650
+        let randX = Math.floor(Math.random() * 600 + 50);
+
+        //Creating new asteroid namespace
+        let newAsteroid = document.createElementNS(svgNS, "path");
+
+        //Setting attributes of asteroid element
+        newAsteroid.setAttribute("id", "asteroid" + asteroidID);
+        newAsteroid.setAttribute("transform", "translate(" + randX + " " + asteroidY + ")");
+        newAsteroid.setAttribute("class", "asteroid");
+
+        //Setting random d value for asteroid (random shape from array)
+        newAsteroid.setAttribute("d", dValueArray[randIndex]);
+
+        newAsteroid.setAttribute("xmlns", svgNS);
+
+        // Attaching new asteroid element to svg
+        svg.appendChild(newAsteroid);
+
+        // Adding new asteroid to array
+        asteroidArray.push(newAsteroid);
+        //console.log(asteroidArray);
+
+        asteroidMoveInterval();
+
+        asteroidID ++;
+    }
+
+    // Setting rate at which asteroids will be created
+
+    function creationInterval() {
+        starCreationTimer = setInterval(createStar, 50);
+        asteroidCreationTimer = setInterval(createAsteroid, 300);
+    }
+
+    function moveAsteroid() {
+        // Iterates through asteroid array to update y positions of all asteroids
+        asteroidArray.forEach((asteroid, index) => {
+
+            // Splitting transform attribute to isolate xy values 
+            let translateArray = asteroid.getAttribute("transform", ).split("(");
+
+            //Splitting substring to further isolate xy values
+            let xyArray = translateArray[1].split(" ");
+
+            // Retrieving xy values
+            let x = parseFloat(xyArray[0]);
+            let y = parseFloat(xyArray[1]);
+
+            // Increasing y value to move asteroid down
+            y += 5;
+
+            // Asteroid bbox
+            let asteroidBox = asteroid.getBBox();
+           
+            // Updating transform attribute
+            asteroid.setAttribute("transform", "translate(" + x + " " + y +")");
+          
+            // Spaceship left x value
+            let spaceX1 = parseFloat(spaceship1.getAttribute("x")) - 20;
+
+            // Spaceship right x value
+            let spaceX2 = spaceX1 + 40;
+
+           // Calling explosion if spaceship coordinates collide with asteroid coordinates
+            if ((y + (asteroidBox.height / 2) >= 650 && y + (asteroidBox.height / 2) <= 710) || (y - (asteroidBox.height / 2) >= 650 && y - (asteroidBox.height / 2) <= 710)) {
+                if ((spaceX1 >= x - (asteroidBox.width / 2) && spaceX1 <= x + (asteroidBox.width / 2)) || (spaceX2 >= x - (asteroidBox.width / 2) && spaceX2 <= x + (asteroidBox.width / 2))) {
+                    //Clear interval before explosion happens
+                    clearInterval(asteroidMovementTimer);
+
+                    // Asteroid gets removed from document inside explosion function
+                    explosion(asteroid, x, y);
+
+                    // Removing asteroid from array
+                    asteroidArray.splice(index, 1);
+
+                    // If no asteroids are left stop the timer, otherwise restart timer interval
+                    if (asteroidArray.length === 0) {
+                        clearInterval(asteroidMovementTimer);
+                    } else {
+                        asteroidMoveInterval();
+                    }
+
+                    spaceship1.setAttribute("fill", "crimson");
+                    setTimeout(resetShipColor, 750);
+                }
+            } else if (y >= 850) {
+                 // Clearing interval for this asteroid
+                clearInterval(asteroidMovementTimer);
+
+                // Removing asteroid element from document
+                svg.removeChild(asteroid);
+
+                // Removing asteroid from array
+                asteroidArray.splice(index, 1);
+
+                // If no asteroids are left stop the timer, otherwise restart timer interval
+                if (asteroidArray.length === 0) {
+                    clearInterval(asteroidMovementTimer);
+                } else {
+                    asteroidMoveInterval();
+                }
+            }
+        });
+    }
+
+    function asteroidMoveInterval() {
+        // Clearing timer for every function call so that speed does not accumulate
+        clearInterval(asteroidMovementTimer);
+
+        asteroidMovementTimer = setInterval(moveAsteroid, 10);
+    }
+
+
+    function explosion(asteroid, x, y) {
+        // Creating namespace for explosion polygon
+        let newExplosion = document.createElementNS(svgNS, "polygon");
+
+        // Getting width and height of asteroid
+        let asteroidBox = asteroid.getBBox();
+
+        let asteroidCenterX = x - (asteroidBox.width / 2);
+        let asteroidCenterY = y - (asteroidBox.height / 2);
+
+        // Updating explosion points instead of translate so animation plays properly
+        let explosionPoints = [
+        (asteroidCenterX + 85.333) + "," + (asteroidCenterY + 42.666),
+        (asteroidCenterX + 74.784) + "," + (asteroidCenterY + 34.061),
+        (asteroidCenterX + 79.617) + "," + (asteroidCenterY + 21.334),
+        (asteroidCenterX + 66.177) + "," + (asteroidCenterY + 19.155),
+        (asteroidCenterX + 64.000) + "," + (asteroidCenterY + 5.717),
+        (asteroidCenterX + 51.273) + "," + (asteroidCenterY + 10.550),
+        (asteroidCenterX + 42.667) + "," + (asteroidCenterY + 0.001),
+        (asteroidCenterX + 34.060) + "," + (asteroidCenterY + 10.550),
+        (asteroidCenterX + 21.334) + "," + (asteroidCenterY + 5.717),
+        (asteroidCenterX + 19.156) + "," + (asteroidCenterY + 19.155),
+        (asteroidCenterX + 5.717) + "," + (asteroidCenterY + 21.334),
+        (asteroidCenterX + 10.550) + "," + (asteroidCenterY + 34.061),
+        (asteroidCenterX + 0.000) + "," + (asteroidCenterY + 42.666),
+        (asteroidCenterX + 10.550) + "," + (asteroidCenterY + 51.271),
+        (asteroidCenterX + 5.717) + "," + (asteroidCenterY + 63.666),
+        (asteroidCenterX + 19.155) + "," + (asteroidCenterY + 66.178),
+        (asteroidCenterX + 21.334) + "," + (asteroidCenterY + 79.617),
+        (asteroidCenterX + 34.060) + "," + (asteroidCenterY + 74.784),
+        (asteroidCenterX + 42.667) + "," + (asteroidCenterY + 85.333),
+        (asteroidCenterX + 51.273) + "," + (asteroidCenterY + 74.784),
+        (asteroidCenterX + 64.000) + "," + (asteroidCenterY + 79.617),
+        (asteroidCenterX + 66.177) + "," + (asteroidCenterY + 66.178),
+        (asteroidCenterX + 79.617) + "," + (asteroidCenterY + 63.666),
+        (asteroidCenterX + 74.784) + "," + (asteroidCenterY + 51.271)
+        ];
+
+        // Putting array values in a string to set the points attribute
+        let pointsString = explosionPoints.join(" ");
+
+        // Setting attributes
+        newExplosion.setAttribute("points", pointsString);
+        newExplosion.setAttribute("xmlns", svgNS);
+       
+
+        // Setting origin for animation to play at the right coordinates
+        newExplosion.style.transformOrigin = asteroidCenterX + "px " + asteroidCenterY + "px";
+
+        // Replacing asteroid path with explosion polygon
+        svg.replaceChild(newExplosion, asteroid);
+
+        newExplosion.setAttribute("class", "explosion");
+
+        // Setting delay before removing explosion polygon
+        setTimeout( function removeExplosion() {
+        svg.removeChild(newExplosion);
+    }, 950);
+    }
+
+    function resetShipColor() {
+        spaceship1.setAttribute("fill", "white"); 
+    }
+
+    let starID = 0;
+    let starArray = [];
+
+    function createStar() {
+
+        // Random x position from 50 to 650
+        let randX = Math.floor(Math.random() * 700);
+
+        //Creating new asteroid namespace
+        let newStar = document.createElementNS(svgNS, "circle");
+
+        //Setting attributes of asteroid element
+        newStar.setAttribute("id", "star" + starID);
+        newStar.setAttribute("r", 1);
+        newStar.setAttribute("cx", randX);
+        newStar.setAttribute("cy", 800);
+        newStar.setAttribute("class", "star");
+        newStar.setAttribute("xmlns", svgNS);
+
+        // Attaching new asteroid element to svg
+        svg.appendChild(newStar);
+
+        // Adding new asteroid to array
+        starArray.push(newStar);
+
+        starMoveInterval();
+
+        starID ++;
+    }
+
+    let starMovementTimer = null;
+
+    function starMoveInterval() {
+        clearInterval(starMovementTimer);
+        starMovementTimer = setInterval(moveStar, 30);
+    }
+
+    function moveStar() {
+        // Iterates through asteroid array to update y positions of all asteroids
+        starArray.forEach((star, index) => {
+
+            // Getting xy values
+            let cx = parseFloat(star.getAttribute("cx"));
+            let cy = parseFloat(star.getAttribute("cy"));
+
+            // Decreasing y value to move star up
+            cy -= 5;
+
+            star.setAttribute("cy", cy);
+
+            if (cy <= -15) {
+                // Clearing interval for this asteroid
+                clearInterval(starMovementTimer);
+
+                // Removing asteroid element from document
+                svg.removeChild(star);
+
+                // Removing asteroid from array
+                starArray.splice(index, 1);
+
+                // If no stars are left stop the timer, otherwise restart timer interval
+                if (starArray.length === 0) {
+                    clearInterval(starMovementTimer);
+                } else {
+                    starMoveInterval();
+                }
+            }
+        });
+    }
+</script> 
+
+</html>
