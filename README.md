@@ -1,0 +1,1 @@
+This game project showcases my HTML, CSS, and JavaScript skills. Mainly, it highlights my use of JavaScript to create a front-end web application. Check out the game here: https://andyr913.github.io/rocky_racer/
